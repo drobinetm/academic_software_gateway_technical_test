@@ -6,6 +6,9 @@ authors = ["Innovasoft Proxy Team <dev@example.com>"]
 readme = "README.md"
 packages = [{ include = "src" }]
 
+[tool.poetry.scripts]
+refresh-openapi = "src.scripts.refresh_upstream_openapi:main"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = "^0.115.0"

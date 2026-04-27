@@ -1,5 +1,3 @@
-"""Tests for SessionService."""
-
 from __future__ import annotations
 
 import pytest
@@ -34,5 +32,4 @@ async def test_delete_session_idempotent(mongo_database):
     service = SessionService(mongo_database["sesiones"])
     await service.save_session(SessionRecord(token="t1"))
     assert await service.delete_session_by_token("t1") is True
-    # second delete is a no-op
     assert await service.delete_session_by_token("t1") is False

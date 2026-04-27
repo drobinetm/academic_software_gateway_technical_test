@@ -1,13 +1,7 @@
-"""Security helpers (Bearer token extraction)."""
-
-from __future__ import annotations
-
-from typing import Optional
-
 from fastapi import Header, HTTPException, status
 
 
-def _parse_bearer(authorization: Optional[str]) -> Optional[str]:
+def _parse_bearer(authorization: str | None) -> str | None:
     if not authorization:
         return None
     parts = authorization.strip().split(" ", 1)
@@ -17,9 +11,8 @@ def _parse_bearer(authorization: Optional[str]) -> Optional[str]:
 
 
 async def get_bearer_token(
-    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+    authorization: str | None = Header(default=None, alias="Authorization"),
 ) -> str:
-    """Require a Bearer token in the request. Raise 401 if missing/invalid."""
     token = _parse_bearer(authorization)
     if not token:
         raise HTTPException(
@@ -31,7 +24,6 @@ async def get_bearer_token(
 
 
 async def get_optional_bearer_token(
-    authorization: Optional[str] = Header(default=None, alias="Authorization"),
-) -> Optional[str]:
-    """Return the Bearer token if present, otherwise None (no error)."""
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> str | None:
     return _parse_bearer(authorization)

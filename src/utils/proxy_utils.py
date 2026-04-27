@@ -1,15 +1,10 @@
-"""Helpers shared by router implementations."""
-
-from __future__ import annotations
-
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import Response
 
 
-def proxy_response(status_code: int, body: bytes, headers: Dict[str, str]) -> Response:
-    """Build a FastAPI Response that mirrors the upstream response."""
+def proxy_response(status_code: int, body: bytes, headers: dict[str, str]) -> Response:
     media_type = headers.get("content-type") or headers.get("Content-Type")
     return Response(
         content=body,
@@ -19,8 +14,7 @@ def proxy_response(status_code: int, body: bytes, headers: Dict[str, str]) -> Re
     )
 
 
-def parse_json_body(body: bytes) -> Optional[Any]:
-    """Best-effort JSON parsing of an upstream body (returns None on failure)."""
+def parse_json_body(body: bytes) -> Any | None:
     if not body:
         return None
     try:
@@ -29,19 +23,26 @@ def parse_json_body(body: bytes) -> Optional[Any]:
         return None
 
 
-def extract_session_fields(parsed_body: Any) -> Dict[str, Optional[str]]:
-    """Pull token/userid/username from common login response shapes."""
+def extract_session_fields(parsed_body: Any) -> dict[str, str | None]:
     if not isinstance(parsed_body, dict):
         return {"token": None, "userid": None, "username": None}
 
-    token = parsed_body.get("token") or parsed_body.get("accessToken") or parsed_body.get("jwt")
+    token = (
+        parsed_body.get("token")
+        or parsed_body.get("accessToken")
+        or parsed_body.get("jwt")
+    )
     userid = (
         parsed_body.get("userid")
         or parsed_body.get("userId")
         or parsed_body.get("id")
         or parsed_body.get("user_id")
     )
-    username = parsed_body.get("username") or parsed_body.get("userName") or parsed_body.get("user")
+    username = (
+        parsed_body.get("username")
+        or parsed_body.get("userName")
+        or parsed_body.get("user")
+    )
     return {
         "token": str(token) if token else None,
         "userid": str(userid) if userid else None,
@@ -49,8 +50,7 @@ def extract_session_fields(parsed_body: Any) -> Dict[str, Optional[str]]:
     }
 
 
-def extract_client_id(parsed_body: Any) -> Optional[str]:
-    """Try to extract a client id from a typical Innovasoft response."""
+def extract_client_id(parsed_body: Any) -> str | None:
     if not isinstance(parsed_body, dict):
         return None
     for key in ("id", "clienteId", "idCliente", "ClienteId", "Id"):

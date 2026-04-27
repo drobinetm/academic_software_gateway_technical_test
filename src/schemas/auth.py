@@ -1,12 +1,9 @@
-"""Authentication-related request schemas."""
-
 from __future__ import annotations
 
 import re
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-# At least one lowercase, one uppercase, one digit; length 9..20.
 _PASSWORD_REGEX = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{9,20}$")
 
 

@@ -1,9 +1,6 @@
-"""Shared pytest fixtures."""
-
-from __future__ import annotations
-
 import os
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
 import pytest
@@ -24,9 +21,26 @@ os.environ.setdefault("LOG_LEVEL", "WARNING")
 
 from src.core.config import get_settings  # noqa: E402
 from src.main import create_app  # noqa: E402
-from src.services.innovasoft_client import InnovasoftClient  # noqa: E402
+from src.services.proxy_service import ProxyService  # noqa: E402
+from src.services.request_log_service import RequestLogService  # noqa: E402
 
 UPSTREAM_BASE = "https://upstream.test/Api"
+
+VALID_CLIENTE_PAYLOAD: dict[str, Any] = {
+    "nombre": "Juan",
+    "apellidos": "Perez",
+    "identificacion": "1-1234-5678",
+    "celular": "88880000",
+    "otroTelefono": "22220000",
+    "direccion": "Calle 1",
+    "fNacimiento": "1990-05-12",
+    "fAfiliacion": "2024-01-01",
+    "sexo": "M",
+    "resennaPersonal": "VIP",
+    "imagen": None,
+    "interesFK": "11111111-1111-1111-1111-111111111111",
+    "usuarioId": "u-1",
+}
 
 
 @pytest.fixture
@@ -40,12 +54,10 @@ async def mongo_database():
     client = AsyncMongoMockClient()
     db = client["innovasoft_proxy_test"]
     yield db
-    # mongomock-motor cleans up automatically; nothing else needed.
 
 
 @pytest_asyncio.fixture
 async def app_instance(settings, mongo_database) -> AsyncIterator[FastAPI]:
-    """Build a FastAPI app wired with mock Mongo and a real (mocked) httpx client."""
     app = create_app(settings)
 
     http_client = httpx.AsyncClient(timeout=settings.api_timeout_seconds)
@@ -54,8 +66,11 @@ async def app_instance(settings, mongo_database) -> AsyncIterator[FastAPI]:
     app.state.http_client = http_client
     app.state.mongodb_client = None
     app.state.mongodb_database = mongo_database
-    app.state.innovasoft_client = InnovasoftClient(
+    app.state.proxy_service = ProxyService(
         http_client, settings.innovasoft_base_url, settings.api_timeout_seconds
+    )
+    app.state.request_log_service = RequestLogService(
+        mongo_database[settings.request_logs_collection]
     )
 
     try:
@@ -80,3 +95,8 @@ def respx_mock():
 @pytest.fixture
 def upstream_base() -> str:
     return UPSTREAM_BASE
+
+
+@pytest.fixture
+def valid_cliente_payload() -> dict[str, Any]:
+    return dict(VALID_CLIENTE_PAYLOAD)

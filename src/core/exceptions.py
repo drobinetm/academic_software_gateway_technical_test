@@ -1,17 +1,8 @@
-"""Custom exceptions used by the gateway."""
-
-from __future__ import annotations
-
-from typing import Optional
-
-
 class GatewayError(Exception):
-    """Base error for gateway-controlled failures."""
-
     code: str = "gateway_error"
     status_code: int = 500
 
-    def __init__(self, message: str, *, code: Optional[str] = None) -> None:
+    def __init__(self, message: str, *, code: str | None = None) -> None:
         super().__init__(message)
         self.message = message
         if code:
@@ -19,8 +10,6 @@ class GatewayError(Exception):
 
 
 class UpstreamUnavailableError(GatewayError):
-    """Raised when the Innovasoft API cannot be reached or times out."""
-
     def __init__(
         self,
         message: str = "Upstream service unavailable",
@@ -33,7 +22,45 @@ class UpstreamUnavailableError(GatewayError):
 
 
 class ValidationGatewayError(GatewayError):
-    """Raised for domain validation issues controlled by the gateway."""
-
     code = "validation_error"
     status_code = 422
+
+
+class StartupError(GatewayError):
+    """Raised when a non-critical startup task fails (indexes, OpenAPI schema load).
+
+    Swallowed at the call site so the application still starts.
+    """
+
+    code = "startup_error"
+    status_code = 500
+
+
+class RequestLogError(GatewayError):
+    """Raised when persisting an HTTP request log entry to MongoDB fails.
+
+    Swallowed at the call site so logging failures never affect responses.
+    """
+
+    code = "request_log_error"
+    status_code = 500
+
+
+class OperationLogError(GatewayError):
+    """Raised when persisting a CRUD audit record to MongoDB fails.
+
+    Swallowed at the call site so audit failures never affect responses.
+    """
+
+    code = "operation_log_error"
+    status_code = 500
+
+
+class AuditExtractionError(GatewayError):
+    """Raised when a RouteSpec client_id_extractor callable fails.
+
+    Swallowed at the call site; the audit record is still written with client_id=None.
+    """
+
+    code = "audit_extraction_error"
+    status_code = 500

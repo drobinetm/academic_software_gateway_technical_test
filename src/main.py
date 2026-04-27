@@ -1,11 +1,8 @@
-"""FastAPI application entry point."""
-
-from __future__ import annotations
-
 import time
 import uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import Any
 
 import httpx
 from fastapi import FastAPI, Request, status
@@ -17,20 +14,20 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from src.api.routes import auth as auth_routes
-from src.api.routes import clients as clients_routes
-from src.api.routes import interests as interests_routes
+from src.api.routes import proxy as proxy_routes
 from src.core.config import Settings, get_settings
-from src.core.exceptions import GatewayError, UpstreamUnavailableError
+from src.core.exceptions import GatewayError, StartupError, UpstreamUnavailableError
 from src.core.logging import configure_logging, get_logger, request_id_ctx_var
+from src.core.middleware import HTTPRequestLogMiddleware
+from src.core.openapi import build_openapi
 from src.db.mongodb import ensure_indexes
-from src.services.innovasoft_client import InnovasoftClient
+from src.services.proxy_service import ProxyService
+from src.services.request_log_service import RequestLogService
 
 logger = get_logger(__name__)
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
-    """Attach a request_id and emit structured access logs."""
-
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
         request_id = request.headers.get("X-Request-Id") or uuid.uuid4().hex
         token = request_id_ctx_var.set(request_id)
@@ -84,16 +81,35 @@ def _build_lifespan(settings: Settings):
         app.state.http_client = http_client
         app.state.mongodb_client = mongo_client
         app.state.mongodb_database = database
-        app.state.innovasoft_client = InnovasoftClient(
+        app.state.proxy_service = ProxyService(
             http_client,
             settings.innovasoft_base_url,
             settings.api_timeout_seconds,
         )
+        app.state.request_log_service = RequestLogService(
+            database[settings.request_logs_collection]
+        )
 
         try:
             await ensure_indexes(database)
-        except Exception:  # pragma: no cover
-            logger.exception("index_creation_failed")
+        except Exception as exc:  # pragma: no cover
+            logger.exception(
+                "index_creation_failed",
+                extra={"error": str(StartupError(str(exc)))},
+            )
+
+        try:
+            merged = await build_openapi(settings)
+            if merged is not None:
+                app.openapi_schema = merged
+                logger.info("openapi_schema_loaded_from_upstream")
+            else:
+                logger.info("openapi_schema_using_native_fastapi")
+        except Exception as exc:  # pragma: no cover
+            logger.exception(
+                "openapi_schema_build_failed",
+                extra={"error": str(StartupError(str(exc)))},
+            )
 
         try:
             yield
@@ -107,7 +123,9 @@ def _build_lifespan(settings: Settings):
 
 def _register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(UpstreamUnavailableError)
-    async def _upstream_handler(_: Request, exc: UpstreamUnavailableError) -> JSONResponse:
+    async def _upstream_handler(
+        _: Request, exc: UpstreamUnavailableError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.message, "code": exc.code},
@@ -121,7 +139,9 @@ def _register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def _validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+    async def _validation_handler(
+        _: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
@@ -133,7 +153,9 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _unhandled_handler(_: Request, exc: Exception) -> JSONResponse:
-        logger.exception("unhandled_exception", extra={"error_type": type(exc).__name__})
+        logger.exception(
+            "unhandled_exception", extra={"error_type": type(exc).__name__}
+        )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal Server Error", "code": "internal_error"},
@@ -141,7 +163,6 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
-    """Application factory."""
     settings = settings or get_settings()
     configure_logging(settings.log_level)
 
@@ -161,16 +182,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_headers=["*"],
             expose_headers=["X-Request-Id"],
         )
+    app.add_middleware(HTTPRequestLogMiddleware)
     app.add_middleware(RequestContextMiddleware)
 
     _register_exception_handlers(app)
 
+    # Order matters: explicit auth handlers BEFORE the catch-all proxy.
     app.include_router(auth_routes.router)
-    app.include_router(clients_routes.router)
-    app.include_router(interests_routes.router)
+    app.include_router(proxy_routes.router)
 
     @app.get("/health", tags=["meta"])
-    async def health() -> dict:
+    async def health() -> dict[str, Any]:
         return {"status": "ok", "environment": settings.environment}
 
     return app

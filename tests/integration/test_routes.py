@@ -1,11 +1,9 @@
-"""Integration tests covering router → InnovasoftClient → MongoDB."""
-
 from __future__ import annotations
 
 import httpx
 import pytest
 
-UPSTREAM = "https://upstream.test/Api"
+from tests.conftest import UPSTREAM_BASE as UPSTREAM
 
 
 @pytest.mark.asyncio
@@ -51,7 +49,6 @@ async def test_register_invalid_email_returns_422(async_client, respx_mock):
         json={"username": "u", "email": "not-email", "password": "StrongPwd1"},
     )
     assert response.status_code == 422
-    # Innovasoft must NOT have been called.
     assert not respx_mock.calls
 
 
@@ -133,21 +130,7 @@ async def test_cliente_listado_without_token_returns_401(async_client, respx_moc
     assert not respx_mock.calls
 
 
-VALID_CLIENTE_PAYLOAD = {
-    "nombre": "Juan",
-    "apellidos": "Perez",
-    "identificacion": "1-1234-5678",
-    "celular": "88880000",
-    "otroTelefono": "22220000",
-    "direccion": "Calle 1",
-    "fNacimiento": "1990-05-12",
-    "fAfiliacion": "2024-01-01",
-    "sexo": "M",
-    "resennaPersonal": "VIP",
-    "imagen": None,
-    "interesFK": "11111111-1111-1111-1111-111111111111",
-    "usuarioId": "u-1",
-}
+from tests.conftest import VALID_CLIENTE_PAYLOAD
 
 
 @pytest.mark.asyncio
@@ -267,7 +250,6 @@ async def test_upstream_network_error_returns_502(async_client, respx_mock):
 
 @pytest.mark.asyncio
 async def test_route_compatibility_smoke(async_client, respx_mock):
-    """Smoke test: every documented route is reachable through the gateway."""
     respx_mock.post(f"{UPSTREAM}/api/Authenticate/login").mock(
         return_value=httpx.Response(200, json={"token": "t", "username": "u"})
     )

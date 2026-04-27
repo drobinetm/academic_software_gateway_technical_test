@@ -1,5 +1,3 @@
-"""Tests for OperationLogService."""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
@@ -44,7 +42,6 @@ async def test_record_failure_does_not_raise():
     failing = AsyncMock()
     failing.insert_one = AsyncMock(side_effect=RuntimeError("boom"))
     service = OperationLogService(failing)
-    # Should not raise even when the underlying collection fails.
     await service.record_operation(
         action=OperationAction.CREATE,
         user="u",
