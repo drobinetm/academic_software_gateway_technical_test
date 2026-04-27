@@ -27,22 +27,14 @@ def extract_session_fields(parsed_body: Any) -> dict[str, str | None]:
     if not isinstance(parsed_body, dict):
         return {"token": None, "userid": None, "username": None}
 
-    token = (
-        parsed_body.get("token")
-        or parsed_body.get("accessToken")
-        or parsed_body.get("jwt")
-    )
+    token = parsed_body.get("token") or parsed_body.get("accessToken") or parsed_body.get("jwt")
     userid = (
         parsed_body.get("userid")
         or parsed_body.get("userId")
         or parsed_body.get("id")
         or parsed_body.get("user_id")
     )
-    username = (
-        parsed_body.get("username")
-        or parsed_body.get("userName")
-        or parsed_body.get("user")
-    )
+    username = parsed_body.get("username") or parsed_body.get("userName") or parsed_body.get("user")
     return {
         "token": str(token) if token else None,
         "userid": str(userid) if userid else None,

@@ -14,18 +14,14 @@ from src.core.logging import get_logger
 from src.core.security import _parse_bearer
 from src.db.mongodb import OPERATIONS_COLLECTION, SESSIONS_COLLECTION, get_db
 from src.models.operation_log import OperationAction
-from src.schemas.client import (
-    ClientCreateRequest,
-    ClientListRequest,
-    ClientUpdateRequest,
-)
+from src.schemas.client import ClientCreateRequest, ClientListRequest, ClientUpdateRequest
 from src.services.operation_log_service import OperationLogService
 from src.services.proxy_service import ProxyService, get_proxy_service
 from src.services.session_service import SessionService
 from src.utils.proxy_utils import extract_client_id, parse_json_body, proxy_response
 
 if TYPE_CHECKING:  # pragma: no cover
-    pass
+    from motor.motor_asyncio import AsyncIOMotorCollection
 
 logger = get_logger(__name__)
 
@@ -43,9 +39,7 @@ class RouteSpec:
     require_bearer: bool = False
 
 
-def _client_id_from_response(
-    body: bytes, _path_params: Mapping[str, str]
-) -> str | None:
+def _client_id_from_response(body: bytes, _path_params: Mapping[str, str]) -> str | None:
     return extract_client_id(parse_json_body(body))
 
 
@@ -120,7 +114,7 @@ _ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 
 @router.api_route("/api/{full_path:path}", methods=_ALLOWED_METHODS)
-async def proxy_catchall(  # pylint: disable=too-many-locals
+async def proxy_catchall(
     full_path: str,
     request: Request,
     body: bytes = Depends(validate_request_body),
@@ -147,7 +141,6 @@ async def proxy_catchall(  # pylint: disable=too-many-locals
         params=dict(request.query_params) if request.query_params else None,
     )
 
-    # Audit hook (CREATE / UPDATE / DELETE) — runs even on non-2xx upstream.
     if spec is not None and spec.audit_action is not None:
         await _record_audit(
             request=request,
@@ -165,7 +158,7 @@ async def proxy_catchall(  # pylint: disable=too-many-locals
 async def _resolve_username(
     bearer_token: str | None,
     request_body: bytes,
-    sessions_coll,
+    sessions_coll: AsyncIOMotorCollection,
 ) -> str | None:
     if bearer_token:
         session_doc = await SessionService(sessions_coll).find_by_token(bearer_token)
@@ -201,11 +194,7 @@ async def _resolve_client_id(
                 extra={"error": str(AuditExtractionError(str(exc)))},
             )
 
-    if (
-        client_id is None
-        and spec.audit_action == OperationAction.UPDATE
-        and request_body
-    ):
+    if client_id is None and spec.audit_action == OperationAction.UPDATE and request_body:
         parsed = parse_json_body(request_body)
         if isinstance(parsed, dict):
             cid = parsed.get("id") or parsed.get("Id")
@@ -215,7 +204,7 @@ async def _resolve_client_id(
     return client_id
 
 
-async def _record_audit(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+async def _record_audit(
     request: Request,
     spec: RouteSpec,
     bearer_token: str | None,

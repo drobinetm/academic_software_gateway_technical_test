@@ -1,27 +1,21 @@
-from __future__ import annotations
-
 import base64
 import binascii
 from datetime import date
-from typing import Literal, Optional
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 
 class ClientListRequest(BaseModel):
-    """Payload for POST /api/Cliente/Listado."""
-
     model_config = ConfigDict(
         str_strip_whitespace=True,
         extra="allow",
         populate_by_name=True,
     )
 
-    identification: Optional[str] = Field(
-        default=None, max_length=20, alias="identificacion"
-    )
-    name: Optional[str] = Field(default=None, max_length=50, alias="nombre")
+    identification: str | None = Field(default=None, max_length=20, alias="identificacion")
+    name: str | None = Field(default=None, max_length=50, alias="nombre")
     user_id: str = Field(..., min_length=1, alias="usuarioId")
 
 
@@ -36,29 +30,23 @@ class _ClientBase(BaseModel):
     last_name: str = Field(..., max_length=100, alias="apellidos")
     identification: str = Field(..., max_length=20, alias="identificacion")
     mobile_phone: str = Field(..., max_length=20, alias="celular")
-    other_phone: Optional[str] = Field(
-        default=None, max_length=20, alias="otroTelefono"
-    )
+    other_phone: str | None = Field(default=None, max_length=20, alias="otroTelefono")
     address: str = Field(..., max_length=200, alias="direccion")
     birth_date: date = Field(..., alias="fNacimiento")
     affiliation_date: date = Field(..., alias="fAfiliacion")
     gender: Literal["M", "F"] = Field(..., alias="sexo")
     personal_review: str = Field(..., max_length=200, alias="resennaPersonal")
-    image: Optional[str] = Field(default=None, alias="imagen")
+    image: str | None = Field(default=None, alias="imagen")
     interest_fk: UUID = Field(..., alias="interesFK")
     user_id: str = Field(..., min_length=1, alias="usuarioId")
 
     @field_validator("image")
     @classmethod
-    def _validate_image_base64(cls, value: Optional[str]) -> Optional[str]:
+    def _validate_image_base64(cls, value: str | None) -> str | None:
         if value is None or value == "":
             return None
         # Allow `data:image/png;base64,...` prefixes by stripping the metadata.
-        candidate = (
-            value.split(",", 1)[1]
-            if value.startswith("data:") and "," in value
-            else value
-        )
+        candidate = value.split(",", 1)[1] if value.startswith("data:") and "," in value else value
         try:
             base64.b64decode(candidate, validate=True)
         except (binascii.Error, ValueError) as exc:
@@ -75,10 +63,8 @@ class _ClientBase(BaseModel):
 
 
 class ClientCreateRequest(_ClientBase):
-    """Payload for POST /api/Cliente/Crear."""
+    pass
 
 
 class ClientUpdateRequest(_ClientBase):
-    """Payload for POST /api/Cliente/Actualizar (carries an id)."""
-
-    id: Optional[str] = None
+    id: str | None = None

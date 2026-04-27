@@ -17,6 +17,7 @@ os.environ.setdefault("MONGODB_URI", "mongodb://localhost:27017")
 os.environ.setdefault("MONGODB_DATABASE", "innovasoft_proxy_test")
 os.environ.setdefault("API_TIMEOUT_SECONDS", "5")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
+os.environ.setdefault("CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 
 from src.core.config import get_settings  # noqa: E402

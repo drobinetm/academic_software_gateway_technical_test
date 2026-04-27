@@ -38,7 +38,7 @@ _UPSTREAM_SAMPLE = {
 
 def test_merge_rebrands_title_and_servers():
     result = merge_gateway_openapi(_UPSTREAM_SAMPLE)
-    assert result["info"]["title"] == "Innovasoft Proxy Gateway"
+    assert result["info"]["title"] == "Innovasoft S.A Proxy Gateway"
     assert result["servers"] == [{"url": "/"}]
 
 

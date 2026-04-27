@@ -14,17 +14,18 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      ENVIRONMENT: ${{ secrets.ENVIRONMENT }}
-      LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+      ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'production' }}
+      LOG_LEVEL: ${{ secrets.LOG_LEVEL || 'INFO' }}
       INNOVASOFT_BASE_URL: ${{ secrets.INNOVASOFT_BASE_URL }}
       MONGODB_URI: ${{ secrets.MONGODB_URI }}
       MONGODB_DATABASE: ${{ secrets.MONGODB_DATABASE }}
-      API_TIMEOUT_SECONDS: ${{ secrets.API_TIMEOUT_SECONDS }}
+      API_TIMEOUT_SECONDS: ${{ secrets.API_TIMEOUT_SECONDS || '30' }}
       CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
-      UPSTREAM_OPENAPI_URL: ${{ secrets.UPSTREAM_OPENAPI_URL }}
-      UPSTREAM_OPENAPI_FETCH_TIMEOUT: ${{ secrets.UPSTREAM_OPENAPI_FETCH_TIMEOUT }}
-      OPENAPI_CACHE_PATH: ${{ secrets.OPENAPI_CACHE_PATH }}
-      REQUEST_LOGS_COLLECTION: ${{ secrets.REQUEST_LOGS_COLLECTION }}
+      CORS_ORIGIN_REGEX: ${{ secrets.CORS_ORIGIN_REGEX }}
+      UPSTREAM_OPENAPI_URL: ${{ secrets.UPSTREAM_OPENAPI_URL || 'https://pruebareactjs.test-class.com/Api/swagger/v1/swagger.json' }}
+      UPSTREAM_OPENAPI_FETCH_TIMEOUT: ${{ secrets.UPSTREAM_OPENAPI_FETCH_TIMEOUT || '10' }}
+      OPENAPI_CACHE_PATH: ${{ secrets.OPENAPI_CACHE_PATH || 'static/innovasoft_openapi_cache.json' }}
+      REQUEST_LOGS_COLLECTION: ${{ secrets.REQUEST_LOGS_COLLECTION || 'request_logs' }}
       REQUEST_LOG_TTL_SECONDS: ${{ secrets.REQUEST_LOG_TTL_SECONDS }}
 
     steps:
@@ -47,6 +48,28 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      - name: Validate required deploy secrets
+        run: |
+          missing=0
+          for name in \
+            VERCEL_TOKEN \
+            VERCEL_ORG_ID \
+            VERCEL_PROJECT_ID \
+            INNOVASOFT_BASE_URL \
+            MONGODB_URI \
+            MONGODB_DATABASE \
+            CORS_ORIGINS \
+          ; do
+            if [ -z "${!name}" ]; then
+              echo "Missing required secret: $name"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
       - name: Pull Vercel project settings
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
@@ -63,6 +86,7 @@ jobs:
           --env MONGODB_DATABASE="$MONGODB_DATABASE"
           --env API_TIMEOUT_SECONDS="$API_TIMEOUT_SECONDS"
           --env CORS_ORIGINS="$CORS_ORIGINS"
+          --env CORS_ORIGIN_REGEX="$CORS_ORIGIN_REGEX"
           --env UPSTREAM_OPENAPI_URL="$UPSTREAM_OPENAPI_URL"
           --env UPSTREAM_OPENAPI_FETCH_TIMEOUT="$UPSTREAM_OPENAPI_FETCH_TIMEOUT"
           --env OPENAPI_CACHE_PATH="$OPENAPI_CACHE_PATH"

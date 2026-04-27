@@ -35,9 +35,7 @@ def get_request_logs_collection(request: Request) -> AsyncIOMotorCollection:
 
 async def ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     settings = get_settings()
-    await database[SESSIONS_COLLECTION].create_index(
-        "token", unique=True, name="uniq_token"
-    )
+    await database[SESSIONS_COLLECTION].create_index("token", unique=True, name="uniq_token")
     await database[OPERATIONS_COLLECTION].create_index(
         [("usuario", 1), ("timestamp", -1)],
         name="usuario_timestamp_idx",

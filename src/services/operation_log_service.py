@@ -13,8 +13,6 @@ logger = get_logger(__name__)
 
 
 class OperationLogService:
-    """Persistence service for the `operaciones` collection."""
-
     def __init__(self, collection: AsyncIOMotorCollection) -> None:
         self._collection = collection
 

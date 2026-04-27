@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, Response, status
 
 from src.core.logging import get_logger
@@ -9,6 +13,9 @@ from src.services.proxy_service import ProxyService, get_proxy_service
 from src.services.session_service import SessionService
 from src.utils.proxy_utils import extract_session_fields, parse_json_body, proxy_response
 
+if TYPE_CHECKING:  # pragma: no cover
+    from motor.motor_asyncio import AsyncIOMotorCollection
+
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/Authenticate", tags=["Authenticate"])
@@ -18,7 +25,7 @@ router = APIRouter(prefix="/api/Authenticate", tags=["Authenticate"])
 async def login(
     payload: LoginRequest,
     proxy: ProxyService = Depends(get_proxy_service),
-    sessions=Depends(get_sessions_collection),
+    sessions: AsyncIOMotorCollection = Depends(get_sessions_collection),
 ) -> Response:
     body = payload.model_dump_json().encode("utf-8")
     status_code, response_body, headers = await proxy.forward(
@@ -63,11 +70,8 @@ async def register(
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(
-    # NOTE: Terminal-local. Does NOT call ProxyService.forward — Innovasoft has
-    # no logout endpoint. The PDF only requires deleting the local session
-    # document, which is handled here.
     token: str = Depends(get_bearer_token),
-    sessions=Depends(get_sessions_collection),
+    sessions: AsyncIOMotorCollection = Depends(get_sessions_collection),
 ) -> LogoutResponse:
     service = SessionService(sessions)
     deleted = await service.delete_session_by_token(token)

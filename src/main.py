@@ -2,13 +2,14 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 import httpx
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
@@ -25,10 +26,11 @@ from src.services.proxy_service import ProxyService
 from src.services.request_log_service import RequestLogService
 
 logger = get_logger(__name__)
+FAVICON_PATH = Path(__file__).resolve().parent.parent / "static" / "favicon.ico"
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+    async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
         request_id = request.headers.get("X-Request-Id") or uuid.uuid4().hex
         token = request_id_ctx_var.set(request_id)
         start = time.perf_counter()
@@ -91,10 +93,11 @@ def _build_lifespan(settings: Settings):
         )
 
         try:
+            await database.command("ping")
             await ensure_indexes(database)
         except Exception as exc:  # pragma: no cover
             logger.exception(
-                "index_creation_failed",
+                "mongodb_startup_failed",
                 extra={"error": str(StartupError(str(exc)))},
             )
 
@@ -123,9 +126,7 @@ def _build_lifespan(settings: Settings):
 
 def _register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(UpstreamUnavailableError)
-    async def _upstream_handler(
-        _: Request, exc: UpstreamUnavailableError
-    ) -> JSONResponse:
+    async def _upstream_handler(_: Request, exc: UpstreamUnavailableError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.message, "code": exc.code},
@@ -139,9 +140,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def _validation_handler(
-        _: Request, exc: RequestValidationError
-    ) -> JSONResponse:
+    async def _validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
@@ -153,9 +152,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _unhandled_handler(_: Request, exc: Exception) -> JSONResponse:
-        logger.exception(
-            "unhandled_exception", extra={"error_type": type(exc).__name__}
-        )
+        logger.exception("unhandled_exception", extra={"error_type": type(exc).__name__})
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal Server Error", "code": "internal_error"},
@@ -173,12 +170,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=_build_lifespan(settings),
     )
 
-    if settings.cors_origins:
+    if settings.cors_origins or settings.cors_origin_regex:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.cors_origins,
+            allow_origin_regex=settings.cors_origin_regex,
             allow_credentials=True,
-            allow_methods=["*"],
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             allow_headers=["*"],
             expose_headers=["X-Request-Id"],
         )
@@ -194,6 +192,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/health", tags=["meta"])
     async def health() -> dict[str, Any]:
         return {"status": "ok", "environment": settings.environment}
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon() -> FileResponse:
+        return FileResponse(FAVICON_PATH, media_type="image/x-icon")
 
     return app
 

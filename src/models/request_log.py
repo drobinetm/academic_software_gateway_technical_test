@@ -21,4 +21,4 @@ class RequestLog(BaseModel):
     user_agent: str | None = None
 
     def to_document(self) -> dict[str, Any]:
-        return self.model_dump(exclude_none=False)
+        return self.model_dump()

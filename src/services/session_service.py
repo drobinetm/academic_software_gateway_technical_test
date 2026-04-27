@@ -12,8 +12,6 @@ logger = get_logger(__name__)
 
 
 class SessionService:
-    """Persistence service for the `sesiones` collection."""
-
     def __init__(self, collection: AsyncIOMotorCollection) -> None:
         self._collection = collection
 

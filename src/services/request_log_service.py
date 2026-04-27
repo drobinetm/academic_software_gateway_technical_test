@@ -16,7 +16,7 @@ class RequestLogService:
     def __init__(self, collection: AsyncIOMotorCollection) -> None:
         self._collection = collection
 
-    async def log(  # pylint: disable=too-many-arguments
+    async def log(
         self,
         method: str,
         path: str,

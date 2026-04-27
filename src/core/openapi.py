@@ -30,10 +30,7 @@ async def fetch_upstream_openapi(url: str, timeout: float) -> dict[str, Any] | N
             logger.warning("upstream_openapi_unexpected_shape")
             return None
         if "openapi" not in spec:
-            # Swagger 2.0 (`swagger: "2.0"`) is not consumable by FastAPI as-is.
-            logger.warning(
-                "upstream_openapi_not_v3", extra={"keys": list(spec.keys())[:5]}
-            )
+            logger.warning("upstream_openapi_not_v3", extra={"keys": list(spec.keys())[:5]})
             return None
         return spec
     except (httpx.HTTPError, ValueError):
@@ -56,13 +53,6 @@ def load_cached_openapi(path: str) -> dict[str, Any] | None:
 
 
 def merge_gateway_openapi(upstream: dict[str, Any]) -> dict[str, Any]:
-    """Apply the gateway-specific overrides to an OpenAPI spec.
-
-    - Rebrand ``info.title`` and ``info.description``.
-    - Force ``servers`` to ``[{"url": "/"}]`` so "Try it out" hits the gateway.
-    - Inject ``POST /api/Authenticate/logout`` (terminal-local).
-    - Reinforce ``components.schemas.Register.password`` with the gateway regex.
-    """
     spec = json.loads(json.dumps(upstream))  # deep copy via JSON round-trip
 
     info = spec.setdefault("info", {})
@@ -106,7 +96,6 @@ def merge_gateway_openapi(upstream: dict[str, Any]) -> dict[str, Any]:
 
 
 async def build_openapi(settings: Settings) -> dict[str, Any] | None:
-    """Build the merged OpenAPI spec at startup, with three-tier fallback."""
     spec = await fetch_upstream_openapi(
         settings.upstream_openapi_url, settings.upstream_openapi_fetch_timeout
     )

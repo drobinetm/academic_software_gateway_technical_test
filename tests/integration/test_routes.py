@@ -7,6 +7,38 @@ from tests.conftest import UPSTREAM_BASE as UPSTREAM
 
 
 @pytest.mark.asyncio
+async def test_cors_preflight_allows_vercel_frontend(async_client):
+    response = await async_client.options(
+        "/api/Authenticate/login",
+        headers={
+            "Origin": "https://frontend-under-test.vercel.app",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert response.status_code == 200
+    assert (
+        response.headers["access-control-allow-origin"]
+        == "https://frontend-under-test.vercel.app"
+    )
+
+
+@pytest.mark.asyncio
+async def test_cors_preflight_allows_other_vercel_previews(async_client):
+    response = await async_client.options(
+        "/api/Authenticate/login",
+        headers={
+            "Origin": "https://academic-software-frontend-technica-git-main.vercel.app",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert response.status_code == 200
+    assert (
+        response.headers["access-control-allow-origin"]
+        == "https://academic-software-frontend-technica-git-main.vercel.app"
+    )
+
+
+@pytest.mark.asyncio
 async def test_login_ok_persists_session(async_client, respx_mock, mongo_database):
     respx_mock.post(f"{UPSTREAM}/api/Authenticate/login").mock(
         return_value=httpx.Response(

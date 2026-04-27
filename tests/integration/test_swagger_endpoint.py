@@ -20,6 +20,13 @@ async def test_swagger_ui_returns_200(async_client):
 
 
 @pytest.mark.asyncio
+async def test_favicon_returns_200(async_client):
+    response = await async_client.get("/favicon.ico")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/x-icon"
+
+
+@pytest.mark.asyncio
 async def test_openapi_includes_authenticate_paths(async_client):
     """Either upstream-derived or FastAPI-native OpenAPI must list our auth routes."""
     response = await async_client.get("/openapi.json")

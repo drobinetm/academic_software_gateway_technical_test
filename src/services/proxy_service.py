@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TypeAlias
 from urllib.parse import urljoin
 
 import httpx
@@ -9,9 +7,6 @@ from fastapi import Request
 
 from src.core.exceptions import StartupError, UpstreamUnavailableError
 from src.core.logging import get_logger
-
-if TYPE_CHECKING:  # pragma: no cover
-    pass
 
 logger = get_logger(__name__)
 
@@ -45,9 +40,7 @@ ProxyResponse: TypeAlias = tuple[int, bytes, dict[str, str]]
 
 
 class ProxyService:
-    def __init__(
-        self, http_client: httpx.AsyncClient, base_url: str, timeout: float
-    ) -> None:
+    def __init__(self, http_client: httpx.AsyncClient, base_url: str, timeout: float) -> None:
         self._http = http_client
         self._base_url = base_url if base_url.endswith("/") else f"{base_url}/"
         self._timeout = timeout
@@ -60,19 +53,11 @@ class ProxyService:
     def _filter_request_headers(headers: Mapping[str, str] | None) -> dict[str, str]:
         if not headers:
             return {}
-        return {
-            k: v
-            for k, v in headers.items()
-            if k.lower() not in _STRIPPED_REQUEST_HEADERS
-        }
+        return {k: v for k, v in headers.items() if k.lower() not in _STRIPPED_REQUEST_HEADERS}
 
     @staticmethod
     def _filter_response_headers(headers: Mapping[str, str]) -> dict[str, str]:
-        return {
-            k: v
-            for k, v in headers.items()
-            if k.lower() not in _STRIPPED_RESPONSE_HEADERS
-        }
+        return {k: v for k, v in headers.items() if k.lower() not in _STRIPPED_RESPONSE_HEADERS}
 
     async def forward(
         self,
@@ -83,23 +68,7 @@ class ProxyService:
         headers: Mapping[str, str] | None = None,
         params: Mapping[str, str] | None = None,
     ) -> ProxyResponse:
-        """Forward an arbitrary request to the upstream API.
-
-        Args:
-            method: HTTP verb (GET/POST/PUT/PATCH/DELETE).
-            path: Path relative to the configured base URL (e.g.
-                ``"api/Cliente/Listado"``).
-            body: Raw request body to forward (already serialized).
-            headers: Request headers from the caller. Transport headers are
-                stripped before the upstream call.
-            params: Optional query parameters.
-
-        Returns:
-            ``(status_code, body_bytes, response_headers)`` from the upstream.
-
-        Raises:
-            UpstreamUnavailableError: On connection errors (502) or timeouts (504).
-        """
+        # Raises UpstreamUnavailableError: timeout → 504, connect error → 502.
         url = self._build_url(path)
         forward_headers = self._filter_request_headers(headers)
 
@@ -120,9 +89,7 @@ class ProxyService:
                 status_code=504,
             ) from exc
         except httpx.RequestError as exc:
-            logger.warning(
-                "upstream_request_error", extra={"url": url, "method": method}
-            )
+            logger.warning("upstream_request_error", extra={"url": url, "method": method})
             raise UpstreamUnavailableError(
                 "Upstream request failed",
                 code="upstream_unavailable",
