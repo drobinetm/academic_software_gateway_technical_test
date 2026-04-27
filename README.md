@@ -15,10 +15,9 @@
 
 **Innovasoft Proxy Gateway** is an API Gateway built with **FastAPI** that acts as a transparent intermediary between an existing React frontend and the official **Innovasoft S.A. API**. It intercepts every request from the frontend, forwards it to the upstream API, and returns the response — while adding session persistence, CRUD audit logging, input validation and centralised error handling on top.
 
-```
-React Frontend  →  FastAPI Proxy Gateway  →  https://pruebareactjs.test-class.com/Api/
-                                          ↘  Local MongoDB (sessions, operations log)
-```
+
+<img src="static/architecture.png" width="auto" alt="architecture">
+
 
 ## What problem does it solve?
 
