@@ -53,6 +53,19 @@ def test_register_invalid_email():
         RegisterRequest(username="user", email="not-an-email", password="StrongPwd1")
 
 
+def test_client_create_datetime_string_coerced_to_date():
+    """Dates sent as full ISO 8601 datetime strings (with time/offset) must be accepted."""
+    payload = {
+        **VALID_CLIENTE,
+        "fNacimiento": "1986-03-28T04:00:00.000Z",
+        "fAfiliacion": "2009-09-12T04:00:00.000Z",
+    }
+    cli = ClientCreateRequest(**payload)
+    dumped = cli.model_dump(mode="json", by_alias=True)
+    assert dumped["fNacimiento"] == "1986-03-28"
+    assert dumped["fAfiliacion"] == "2009-09-12"
+
+
 def test_client_create_valid():
     cli = ClientCreateRequest(**VALID_CLIENTE)
     dumped = cli.model_dump(mode="json", by_alias=True)

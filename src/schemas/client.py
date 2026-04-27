@@ -1,10 +1,34 @@
 import base64
 import binascii
 from datetime import date
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+)
+
+
+def _coerce_date(value: object) -> object:
+    """Strip time component from ISO 8601 datetime strings before date parsing.
+
+    The React frontend sends dates as full datetime strings (e.g.
+    ``"1986-03-28T04:00:00.000Z"``). Pydantic v2 rejects datetimes with a
+    non-zero time when coercing to ``date``. This validator normalises any
+    string to its date portion so both ``"1986-03-28"`` and
+    ``"1986-03-28T04:00:00.000Z"`` are accepted.
+    """
+    if isinstance(value, str) and "T" in value:
+        return value.split("T")[0]
+    return value
+
+
+ISODate = Annotated[date, BeforeValidator(_coerce_date)]
 
 
 class ClientListRequest(BaseModel):
@@ -14,7 +38,9 @@ class ClientListRequest(BaseModel):
         populate_by_name=True,
     )
 
-    identification: str | None = Field(default=None, max_length=20, alias="identificacion")
+    identification: str | None = Field(
+        default=None, max_length=20, alias="identificacion"
+    )
     name: str | None = Field(default=None, max_length=50, alias="nombre")
     user_id: str = Field(..., min_length=1, alias="usuarioId")
 
@@ -32,8 +58,8 @@ class _ClientBase(BaseModel):
     mobile_phone: str = Field(..., max_length=20, alias="celular")
     other_phone: str | None = Field(default=None, max_length=20, alias="otroTelefono")
     address: str = Field(..., max_length=200, alias="direccion")
-    birth_date: date = Field(..., alias="fNacimiento")
-    affiliation_date: date = Field(..., alias="fAfiliacion")
+    birth_date: ISODate = Field(..., alias="fNacimiento")
+    affiliation_date: ISODate = Field(..., alias="fAfiliacion")
     gender: Literal["M", "F"] = Field(..., alias="sexo")
     personal_review: str = Field(..., max_length=200, alias="resennaPersonal")
     image: str | None = Field(default=None, alias="imagen")
@@ -46,7 +72,11 @@ class _ClientBase(BaseModel):
         if value is None or value == "":
             return None
         # Allow `data:image/png;base64,...` prefixes by stripping the metadata.
-        candidate = value.split(",", 1)[1] if value.startswith("data:") and "," in value else value
+        candidate = (
+            value.split(",", 1)[1]
+            if value.startswith("data:") and "," in value
+            else value
+        )
         try:
             base64.b64decode(candidate, validate=True)
         except (binascii.Error, ValueError) as exc:
