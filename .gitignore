@@ -35,3 +35,6 @@ coverage.xml
 
 # Logs
 *.log
+
+# Generated / runtime artifacts
+static/innovasoft_openapi_cache.json

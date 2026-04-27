@@ -1,3 +1,24 @@
+[project]
+name = "innovasoft-proxy-gateway"
+version = "0.1.0"
+description = "FastAPI gateway/proxy between a React frontend and the Innovasoft S.A. API."
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+authors = [{ name = "Innovasoft Proxy Team", email = "dev@example.com" }]
+dependencies = [
+    "fastapi>=0.115.0,<0.116.0",
+    "uvicorn[standard]>=0.32.0,<0.33.0",
+    "httpx>=0.27.2,<0.28.0",
+    "motor>=3.6.0,<4.0.0",
+    "pydantic>=2.9.0,<3.0.0",
+    "pydantic-settings>=2.5.0,<3.0.0",
+    "email-validator>=2.2.0,<3.0.0",
+    "python-dotenv>=1.0.1,<2.0.0",
+]
+
+[project.scripts]
+refresh-openapi = "src.scripts.refresh_upstream_openapi:main"
+
 [tool.poetry]
 name = "innovasoft-proxy-gateway"
 version = "0.1.0"
@@ -10,7 +31,7 @@ packages = [{ include = "src" }]
 refresh-openapi = "src.scripts.refresh_upstream_openapi:main"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.12"
 fastapi = "^0.115.0"
 uvicorn = { extras = ["standard"], version = "^0.32.0" }
 httpx = "^0.27.2"
@@ -37,7 +58,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 100
-target-version = ["py310"]
+target-version = ["py312"]
 
 [tool.isort]
 profile = "black"
@@ -51,7 +72,7 @@ testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.pylint.main]
-py-version = "3.10"
+py-version = "3.12"
 ignore = ["tests"]
 disable = [
     "missing-module-docstring",
